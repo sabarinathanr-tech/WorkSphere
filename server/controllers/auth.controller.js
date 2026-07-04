@@ -119,6 +119,10 @@ async function revokeRefreshToken(refreshToken) {
 
 export async function register(req, res) {
   const { password, role, name } = req.validated.body;
+  if (role !== "EMPLOYEE") {
+    return res.status(403).json({ message: "Admin and HR accounts must be created by an administrator" });
+  }
+
   const email = normalizeEmail(req.validated.body.email);
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {

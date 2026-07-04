@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   Bell,
@@ -52,6 +52,18 @@ const ROLE_SESSIONS = {
   admin: { name: "Anika Rao", email: "admin@worksphere.io", role: "admin", scope: "Company-wide control" },
   hr: { name: "Priya Menon", email: "hr@worksphere.io", role: "hr", scope: "People operations" },
   employee: { name: "Kabir Mehta", email: "employee@worksphere.io", role: "employee", scope: "Self-service" }
+};
+
+const ROLE_TO_API = {
+  admin: "ADMIN",
+  hr: "HR",
+  employee: "EMPLOYEE"
+};
+
+const API_TO_ROLE = {
+  ADMIN: "admin",
+  HR: "hr",
+  EMPLOYEE: "employee"
 };
 
 const ROLE_NAV = {
@@ -198,8 +210,53 @@ function currency(value) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    throw new Error(data?.message || "Request failed");
+  }
+  return data;
+}
+
+function sessionFromApiUser(user, tokens = {}) {
+  const role = API_TO_ROLE[user.role];
+  const firstName = user.employee?.firstName || user.email.split("@")[0];
+  const lastName = user.employee?.lastName || "";
+  return {
+    ...ROLE_SESSIONS[role],
+    ...tokens,
+    id: user.id,
+    name: `${firstName} ${lastName}`.trim(),
+    email: user.email,
+    role,
+    apiRole: user.role,
+    employee: user.employee
+  };
+}
+
 function App() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem("worksphere_session");
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (parsed?.accessToken && parsed?.refreshToken) return parsed;
+      window.localStorage.removeItem("worksphere_session");
+      return null;
+    } catch {
+      window.localStorage.removeItem("worksphere_session");
+      return null;
+    }
+  });
   const [authMode, setAuthMode] = useState("landing");
   const [selectedRole, setSelectedRole] = useState("admin");
   const [active, setActive] = useState("dashboard");
@@ -210,11 +267,95 @@ function App() {
   const [employeeLeaves, setEmployeeLeaves] = useState(employeeLeavesSeed);
   const [toast, setToast] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authChecking, setAuthChecking] = useState(Boolean(session?.accessToken));
 
   const showToast = (message) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2400);
   };
+
+  const saveSession = (nextSession) => {
+    setSession(nextSession);
+    window.localStorage.setItem("worksphere_session", JSON.stringify(nextSession));
+  };
+
+  const clearSession = async () => {
+    const refreshToken = session?.refreshToken;
+    setSession(null);
+    window.localStorage.removeItem("worksphere_session");
+    setActive("dashboard");
+    if (refreshToken) {
+      try {
+        await apiRequest("/api/auth/logout", {
+          method: "POST",
+          body: JSON.stringify({ refreshToken })
+        });
+      } catch {
+        // Local logout should still succeed if the server session is already expired.
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!session?.accessToken) {
+      setAuthChecking(false);
+      return;
+    }
+
+    let cancelled = false;
+    const clearExpiredSession = () => {
+      setSession(null);
+      window.localStorage.removeItem("worksphere_session");
+      showToast("Session expired. Please sign in again.");
+    };
+
+    apiRequest("/api/auth/me", {
+      headers: { Authorization: `Bearer ${session.accessToken}` }
+    })
+      .then((data) => {
+        if (cancelled) return;
+        const verifiedSession = sessionFromApiUser(data.user, {
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken
+        });
+        setSession(verifiedSession);
+        window.localStorage.setItem("worksphere_session", JSON.stringify(verifiedSession));
+      })
+      .catch(async () => {
+        if (cancelled) return;
+        if (!session.refreshToken) {
+          clearExpiredSession();
+          return;
+        }
+
+        try {
+          const refreshed = await apiRequest("/api/auth/refresh", {
+            method: "POST",
+            body: JSON.stringify({ refreshToken: session.refreshToken })
+          });
+          if (cancelled) return;
+          const refreshedSession = sessionFromApiUser(refreshed.user, {
+            accessToken: refreshed.accessToken,
+            refreshToken: refreshed.refreshToken
+          });
+          setSession(refreshedSession);
+          window.localStorage.setItem("worksphere_session", JSON.stringify(refreshedSession));
+        } catch {
+          if (!cancelled) clearExpiredSession();
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecking(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (authChecking) {
+    return <div className="loading-screen"><ShieldCheck size={30} />Checking secure session...</div>;
+  }
 
   if (!session) {
     return (
@@ -223,10 +364,12 @@ function App() {
         setMode={setAuthMode}
         selectedRole={selectedRole}
         setSelectedRole={setSelectedRole}
-        onEnter={() => {
-          setSession(ROLE_SESSIONS[selectedRole]);
+        onAuthenticated={(user, tokens) => {
+          const nextSession = sessionFromApiUser(user, tokens);
+          saveSession(nextSession);
+          setSelectedRole(nextSession.role);
           setActive("dashboard");
-          showToast(`Welcome to ${ROLE_LABELS[selectedRole]} workspace`);
+          showToast(`Welcome to ${ROLE_LABELS[nextSession.role]} workspace`);
         }}
       />
     );
@@ -235,6 +378,7 @@ function App() {
   const role = session.role;
   const navItems = ROLE_NAV[role].map(([key, label, icon]) => ({ key, label, icon }));
   const allowed = new Set(navItems.map((item) => item.key));
+  if (role === "admin") allowed.add("profile");
   const safeActive = allowed.has(active) ? active : "dashboard";
 
   return (
@@ -246,10 +390,10 @@ function App() {
         items={navItems}
         open={sidebarOpen}
         setOpen={setSidebarOpen}
-        onLogout={() => setSession(null)}
+        onLogout={clearSession}
       />
       <main className="workspace">
-        <Topbar session={session} setSidebarOpen={setSidebarOpen} />
+        <Topbar session={session} setSidebarOpen={setSidebarOpen} setActive={setActive} />
         <section className="content">
           <RoleModule
             active={safeActive}
@@ -273,7 +417,7 @@ function App() {
   );
 }
 
-function AuthExperience({ mode, setMode, selectedRole, setSelectedRole, onEnter }) {
+function AuthExperience({ mode, setMode, selectedRole, setSelectedRole, onAuthenticated }) {
   return (
     <main className="auth-page">
       <section className="auth-hero">
@@ -289,16 +433,16 @@ function AuthExperience({ mode, setMode, selectedRole, setSelectedRole, onEnter 
         </div>
       </section>
       <section className="auth-panel">
-        {mode === "landing" && <RolePicker selectedRole={selectedRole} setSelectedRole={setSelectedRole} onEnter={onEnter} />}
-        {mode === "login" && <AuthCard title="Welcome back" action="Sign in" selectedRole={selectedRole} setSelectedRole={setSelectedRole} onEnter={onEnter} setMode={setMode} />}
-        {mode === "register" && <AuthCard title="Create your account" action="Create account" selectedRole={selectedRole} setSelectedRole={setSelectedRole} onEnter={() => setMode("verify")} setMode={setMode} />}
-        {mode === "verify" && <VerifyEmail onEnter={onEnter} />}
+        {mode === "landing" && <RolePicker selectedRole={selectedRole} setSelectedRole={setSelectedRole} setMode={setMode} />}
+        {mode === "login" && <AuthCard title="Welcome back" action="Sign in" selectedRole={selectedRole} setSelectedRole={setSelectedRole} onAuthenticated={onAuthenticated} setMode={setMode} />}
+        {mode === "register" && <AuthCard title="Create your account" action="Create account" selectedRole={selectedRole} setSelectedRole={setSelectedRole} onAuthenticated={onAuthenticated} setMode={setMode} />}
+        {mode === "verify" && <VerifyEmail setMode={setMode} />}
       </section>
     </main>
   );
 }
 
-function RolePicker({ selectedRole, setSelectedRole, onEnter }) {
+function RolePicker({ selectedRole, setSelectedRole, setMode }) {
   const details = {
     admin: "Full control over company settings, employees, payroll, departments and analytics.",
     hr: "Operational access for employees, attendance, leave approvals and HR reports.",
@@ -319,19 +463,66 @@ function RolePicker({ selectedRole, setSelectedRole, onEnter }) {
           </button>
         ))}
       </div>
-      <button className="primary-btn full" onClick={onEnter}>Enter {ROLE_LABELS[selectedRole]} dashboard</button>
+      <button className="primary-btn full" onClick={() => setMode("login")}>Continue to secure sign in</button>
     </div>
   );
 }
 
-function AuthCard({ title, action, selectedRole, setSelectedRole, onEnter, setMode }) {
+function AuthCard({ title, action, selectedRole, setSelectedRole, onAuthenticated, setMode }) {
+  const [password, setPassword] = useState("WorkSphere@123!");
+  const [name, setName] = useState(ROLE_SESSIONS[selectedRole].name);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const isRegister = action !== "Sign in";
+
+  useEffect(() => {
+    setName(ROLE_SESSIONS[selectedRole].name);
+    setError("");
+  }, [selectedRole]);
+
+  const submitAuth = async (event) => {
+    event.preventDefault();
+    setError("");
+
+    if (!password) {
+      setError("Enter your password.");
+      return;
+    }
+
+    if (password.length < 10) {
+      setError("Password must be at least 10 characters.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const payload = isRegister
+        ? { name, email: ROLE_SESSIONS[selectedRole].email, password, role: ROLE_TO_API[selectedRole] }
+        : { email: ROLE_SESSIONS[selectedRole].email, password, role: ROLE_TO_API[selectedRole] };
+      const data = await apiRequest(isRegister ? "/api/auth/register" : "/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      onAuthenticated(data.user, {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken
+      });
+    } catch (authError) {
+      setError(authError.message || "Unable to authenticate. Check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form className="auth-card" onSubmit={(event) => { event.preventDefault(); onEnter(); }}>
+    <form className="auth-card" onSubmit={submitAuth}>
       <h2>{title}</h2>
+      {isRegister && <label>Name<input value={name} onChange={(event) => setName(event.target.value)} required minLength={2} /></label>}
       <label>Email<input type="email" required value={ROLE_SESSIONS[selectedRole].email} readOnly /></label>
-      <label>Password<input type="password" required defaultValue="WorkSphere@123!" minLength={10} /></label>
+      <label>Password<input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} minLength={10} /></label>
       <label>Role<select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}><option value="admin">Administrator</option><option value="hr">HR</option><option value="employee">Employee</option></select></label>
-      <button className="primary-btn full">{action}</button>
+      {error && <div className="form-error">{error}</div>}
+      <button className="primary-btn full" disabled={loading}>{loading ? "Checking..." : action}</button>
       <button type="button" className="link-btn" onClick={() => setMode(action === "Sign in" ? "register" : "login")}>
         {action === "Sign in" ? "Need an account?" : "Already registered?"}
       </button>
@@ -339,13 +530,13 @@ function AuthCard({ title, action, selectedRole, setSelectedRole, onEnter, setMo
   );
 }
 
-function VerifyEmail({ onEnter }) {
+function VerifyEmail({ setMode }) {
   return (
     <div className="auth-card center">
       <Mail className="panel-icon" />
       <h2>Verify your email</h2>
-      <p>A secure verification link has been prepared for this demo account.</p>
-      <button className="primary-btn full" onClick={onEnter}>Verify and continue</button>
+      <p>A secure verification link has been prepared for this demo account. Sign in after verification.</p>
+      <button className="primary-btn full" onClick={() => setMode("login")}>Back to sign in</button>
     </div>
   );
 }
@@ -369,7 +560,7 @@ function Sidebar({ role, active, setActive, items, open, setOpen, onLogout }) {
   );
 }
 
-function Topbar({ session, setSidebarOpen }) {
+function Topbar({ session, setSidebarOpen, setActive }) {
   const titles = {
     admin: "Company command center",
     hr: "HR operations desk",
@@ -386,7 +577,7 @@ function Topbar({ session, setSidebarOpen }) {
       <div className="topbar-actions">
         <div className="search"><Search size={16} /><input placeholder={session.role === "employee" ? "Search my records" : "Search people, leave, payroll"} /></div>
         <button className="icon-btn"><Bell /></button>
-        <div className="avatar">{session.name.split(" ").map((x) => x[0]).join("")}</div>
+        <button className="avatar avatar-button" title="View profile" onClick={() => setActive("profile")}>{session.name.split(" ").map((x) => x[0]).join("")}</button>
       </div>
     </header>
   );
@@ -408,7 +599,8 @@ function AdminModule(props) {
     payroll: <AdminPayroll showToast={props.showToast} employees={props.adminEmployees} />,
     reports: <AdminReports employees={props.adminEmployees} />,
     notifications: <Notifications data={adminNotifications} title="System-wide alerts" />,
-    settings: <AdminSettings showToast={props.showToast} />
+    settings: <AdminSettings showToast={props.showToast} />,
+    profile: <RoleProfile role="admin" />
   };
   return modules[props.active] || modules.dashboard;
 }
@@ -692,13 +884,14 @@ function HRReports({ employees }) {
 
 function RoleProfile({ role }) {
   const profiles = {
+    admin: { initials: "AR", name: "Anika Rao", title: "Platform Administrator", email: "admin@worksphere.io", department: "Executive", access: "Full company administration, RBAC, payroll and system settings" },
     hr: { initials: "PM", name: "Priya Menon", title: "HR Business Partner", email: "hr@worksphere.io", department: "People", access: "Employee, attendance, leave and HR reports" },
     employee: { initials: "KM", name: "Kabir Mehta", title: "Backend Engineer", email: "employee@worksphere.io", department: "Engineering", access: "Own attendance, leave, payroll and documents" }
   };
   const profile = profiles[role];
   return (
     <div className="profile-layout">
-      <Panel title={role === "hr" ? "HR profile" : "Personal profile"}><div className="profile-card"><div className="profile-avatar">{profile.initials}</div><h2>{profile.name}</h2><p>{profile.title}</p><Badge tone="success">Active</Badge></div></Panel>
+      <Panel title={role === "admin" ? "Admin profile" : role === "hr" ? "HR profile" : "Personal profile"}><div className="profile-card"><div className="profile-avatar">{profile.initials}</div><h2>{profile.name}</h2><p>{profile.title}</p><Badge tone="success">Active</Badge></div></Panel>
       <Panel title="Profile information"><div className="details-grid">{Object.entries({ Email: profile.email, Department: profile.department, Access: profile.access, Phone: "+91 98765 11003", Address: "Bengaluru, Karnataka", "Emergency contact": "+91 98765 22003" }).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div></Panel>
       <Panel title="Documents">{["Identity proof", "Bank document", "Offer letter", "Experience letter"].map((doc) => <Activity key={doc} text={doc} />)}</Panel>
     </div>

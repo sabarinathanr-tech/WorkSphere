@@ -36,6 +36,9 @@ export async function createEmployee(req, res) {
   if (!email || !firstName || !lastName || !jobTitle || !departmentName) {
     return res.status(400).json({ message: "Email, first name, last name, job title and department are required" });
   }
+  if (req.user.role === "HR" && role !== "EMPLOYEE") {
+    return res.status(403).json({ message: "HR can create employee accounts only" });
+  }
 
   const department = await prisma.department.upsert({
     where: { name: departmentName },
