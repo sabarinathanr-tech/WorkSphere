@@ -2,5 +2,11 @@
   "name": "worksphere",
   "version": "1.0.0",
   "private": true,
-  "description": "WorkSphere project scaffold"
+  "description": "WorkSphere HRMS monorepo",
+  "scripts": {
+    "dev": "npm --prefix client run dev",
+    "client:dev": "npm --prefix client run dev",
+    "server:dev": "npm --prefix server run dev",
+    "typecheck": "npm --prefix client run build"
+  }
 }
