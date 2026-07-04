@@ -1,3 +1,4 @@
+import "./env.js";
 import jwt from "jsonwebtoken";
 
 const secret = process.env.JWT_SECRET || "worksphere-local-development-secret";

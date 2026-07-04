@@ -410,6 +410,112 @@ select:focus {
   gap: 20px;
 }
 
+.role-hero,
+.employee-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 178px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: clamp(20px, 4vw, 34px);
+  color: white;
+  box-shadow: var(--shadow);
+}
+
+.role-hero span,
+.employee-welcome span {
+  display: inline-flex;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.role-hero h2,
+.employee-welcome h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: 0;
+}
+
+.role-hero p,
+.employee-welcome p {
+  max-width: 660px;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.6;
+}
+
+.admin-hero {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 58%, #0891b2 100%);
+}
+
+.hr-hero {
+  background: linear-gradient(135deg, #064e3b 0%, #0f766e 54%, #4f46e5 100%);
+}
+
+.employee-welcome {
+  background: linear-gradient(135deg, #172554 0%, #2563eb 52%, #14b8a6 100%);
+}
+
+.employee-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fit {
+  width: fit-content;
+}
+
+.empty-state {
+  margin: 0;
+  padding: 18px;
+  color: var(--muted);
+  background: #f8fafc;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(34px, 1fr));
+  gap: 8px;
+}
+
+.calendar-grid span {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  font-weight: 850;
+}
+
+.present-day {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.late-day {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.future-day {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -662,6 +768,7 @@ td span {
 
 @media (max-width: 1120px) {
   .summary-grid,
+  .employee-grid,
   .dashboard-grid,
   .two-col,
   .settings-grid,
@@ -722,6 +829,7 @@ td span {
   }
 
   .summary-grid,
+  .employee-grid,
   .dashboard-grid,
   .two-col,
   .settings-grid,
@@ -732,9 +840,15 @@ td span {
   }
 
   .page-header,
-  .toolbar {
+  .toolbar,
+  .role-hero,
+  .employee-welcome {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr;
   }
 
   .page-header .primary-btn,
