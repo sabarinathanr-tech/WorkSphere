@@ -40,11 +40,44 @@ model User {
   passwordHash String
   role         Role           @default(EMPLOYEE)
   isVerified   Boolean        @default(false)
+  tokenVersion Int            @default(0)
+  lastLoginAt  DateTime?
+  disabledAt   DateTime?
   employee     Employee?
+  sessions      AuthSession[]
+  passwordResets PasswordResetToken[]
   notifications Notification[]
   activityLogs ActivityLog[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+}
+
+model AuthSession {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Department {

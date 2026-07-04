@@ -329,7 +329,7 @@ function AuthCard({ title, action, selectedRole, setSelectedRole, onEnter, setMo
     <form className="auth-card" onSubmit={(event) => { event.preventDefault(); onEnter(); }}>
       <h2>{title}</h2>
       <label>Email<input type="email" required value={ROLE_SESSIONS[selectedRole].email} readOnly /></label>
-      <label>Password<input type="password" required defaultValue="WorkSphere@123" minLength={8} /></label>
+      <label>Password<input type="password" required defaultValue="WorkSphere@123!" minLength={10} /></label>
       <label>Role<select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)}><option value="admin">Administrator</option><option value="hr">HR</option><option value="employee">Employee</option></select></label>
       <button className="primary-btn full">{action}</button>
       <button type="button" className="link-btn" onClick={() => setMode(action === "Sign in" ? "register" : "login")}>

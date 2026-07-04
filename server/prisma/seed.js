@@ -20,9 +20,11 @@ const users = [
 ];
 
 async function main() {
-  const passwordHash = await bcrypt.hash("WorkSphere@123", 10);
+  const passwordHash = await bcrypt.hash("WorkSphere@123!", 12);
   const departmentRecords = {};
 
+  await prisma.authSession.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.activityLog.deleteMany({ where: { action: "DATABASE_SEEDED" } });
 
@@ -37,7 +39,7 @@ async function main() {
   for (const item of users) {
     const user = await prisma.user.upsert({
       where: { email: item.email },
-      update: { role: item.role, isVerified: true },
+      update: { role: item.role, isVerified: true, passwordHash, disabledAt: null },
       create: {
         email: item.email,
         passwordHash,

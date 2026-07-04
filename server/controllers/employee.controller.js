@@ -1,5 +1,5 @@
-import bcrypt from "bcryptjs";
 import { prisma } from "../config/db.js";
+import { hashPassword } from "../utils/security.js";
 
 function mapEmployee(employee, includeSalary = false) {
   return {
@@ -42,7 +42,7 @@ export async function createEmployee(req, res) {
     update: {},
     create: { name: departmentName }
   });
-  const passwordHash = await bcrypt.hash("WorkSphere@123", 10);
+  const passwordHash = await hashPassword("WorkSphere@123!");
 
   const user = await prisma.user.create({
     data: {

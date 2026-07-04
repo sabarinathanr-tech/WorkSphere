@@ -35,11 +35,21 @@ The backend health endpoint confirms both API and database status:
 http://127.0.0.1:5000/health
 ```
 
-Seeded demo accounts use password `WorkSphere@123`:
+Seeded demo accounts use password `WorkSphere@123!`:
 
 - `admin@worksphere.io`
 - `hr@worksphere.io`
 - `employee@worksphere.io`
+
+Authentication is JWT-based with short-lived access tokens and rotating refresh sessions:
+
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `POST /api/auth/logout-all`
+- `POST /api/auth/change-password`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 
 ## Current implementation
 
