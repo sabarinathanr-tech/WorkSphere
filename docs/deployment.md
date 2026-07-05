@@ -1,80 +1,88 @@
-# WorkSphere Deployment
+# WorkSphere Railway Deployment
 
-Use this setup for a public demo link:
+Use Railway for both the web app and PostgreSQL. The deployed Railway URL serves the React frontend and Express API from one service.
 
-- Database: Neon PostgreSQL
-- Backend API: Render Web Service
-- Frontend: Vercel
+## 1. Create Railway Project
 
-## 1. Create Online PostgreSQL
+1. Push this repository to GitHub.
+2. In Railway, create a new project from the GitHub repository.
+3. Add a Railway PostgreSQL database plugin/service.
+4. Railway will provide `DATABASE_URL` automatically if the web service is connected to the database.
 
-Create a Neon project and copy the pooled PostgreSQL connection string.
+## 2. Web Service Settings
 
-Use it as `DATABASE_URL` in Render. It should look like:
+Railway uses `railway.json` from the repository root.
 
-```text
-postgresql://USER:PASSWORD@HOST/worksphere?sslmode=require
-```
-
-## 2. Deploy Backend on Render
-
-Create a Render Web Service from this repository.
-
-Use:
-
-```text
-Root Directory: server
-Build Command: npm install && npm run prisma:generate
-Start Command: npm start
-Health Check Path: /health
-```
-
-Environment variables:
-
-```text
-DATABASE_URL=<your Neon connection string>
-JWT_SECRET=<long random secret>
-JWT_REFRESH_SECRET=<different long random secret>
-CLIENT_URL=https://your-worksphere-demo.vercel.app
-CLIENT_URLS=https://your-worksphere-demo.vercel.app
-NODE_ENV=production
-PORT=5000
-```
-
-After the first deploy, run from your machine with the Neon `DATABASE_URL`:
+Build command:
 
 ```bash
-npm --prefix server run db:push
-npm --prefix server run seed
+npm run railway:build
 ```
 
-Then verify:
+Start command:
+
+```bash
+npm start
+```
+
+Health check:
 
 ```text
-https://your-worksphere-api.onrender.com/health
+/health
 ```
 
-It should return `"database":"connected"`.
+The backend serves the built frontend from `client/dist` when `NODE_ENV=production`.
 
-## 3. Deploy Frontend on Vercel
+## 3. Environment Variables
 
-Import the repository into Vercel.
-
-Use:
+Set these in the Railway web service:
 
 ```text
-Root Directory: client
-Build Command: npm run build
-Output Directory: dist
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+JWT_SECRET=<long random secret>
+JWT_REFRESH_SECRET=<different long random secret>
+NODE_ENV=production
+CLIENT_URL=https://your-railway-app.up.railway.app
+CLIENT_URLS=https://your-railway-app.up.railway.app
 ```
 
-Environment variable:
+Do not set `VITE_API_URL` for the single-service Railway deployment. The frontend will call `/api/...` on the same domain.
+
+## 4. Initialize Database
+
+After the first deployment succeeds, open Railway Shell for the web service and run:
+
+```bash
+npm run railway:seed
+```
+
+This runs Prisma schema sync and inserts demo data.
+
+## 5. Verify Demo
+
+Open:
 
 ```text
-VITE_API_URL=https://your-worksphere-api.onrender.com
+https://your-railway-app.up.railway.app/health
 ```
 
-After deployment, open the Vercel URL and sign in with:
+Expected:
+
+```json
+{
+  "status": "ok",
+  "service": "WorkSphere API",
+  "database": "connected"
+}
+```
+
+Then open:
+
+```text
+https://your-railway-app.up.railway.app
+```
+
+Demo accounts:
 
 ```text
 admin@worksphere.io / WorkSphere@123!
@@ -84,6 +92,6 @@ employee@worksphere.io / WorkSphere@123!
 
 ## Notes
 
-- Do not deploy with the local `server/.env`.
-- Keep `DATABASE_URL`, `JWT_SECRET`, and `JWT_REFRESH_SECRET` only in host environment variables.
-- If the frontend gets a CORS error, add the exact Vercel URL to `CLIENT_URLS` in Render.
+- Real secrets must stay in Railway environment variables only.
+- `server/.env` is for local development and is ignored by Git.
+- If you change the Railway public URL, update `CLIENT_URL` and `CLIENT_URLS`.

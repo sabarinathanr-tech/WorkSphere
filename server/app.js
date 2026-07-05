@@ -1,5 +1,7 @@
 import cors from "cors";
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import "./config/env.js";
 import authRoutes from "./routes/auth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
@@ -12,6 +14,8 @@ import { prisma } from "./config/db.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const allowedOrigins = new Set([
   process.env.CLIENT_URL,
   ...(process.env.CLIENT_URLS || "").split(",").map((origin) => origin.trim()).filter(Boolean),
@@ -46,6 +50,14 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/profile", profileRoutes);
+
+if (process.env.NODE_ENV === "production") {
+  const clientDistPath = path.resolve(__dirname, "../client/dist");
+  app.use(express.static(clientDistPath));
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
 
 app.use(errorHandler);
 

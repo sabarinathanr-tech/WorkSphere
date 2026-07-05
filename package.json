@@ -7,6 +7,10 @@
     "dev": "npm --prefix client run dev",
     "client:dev": "npm --prefix client run dev",
     "server:dev": "npm --prefix server run dev",
+    "build": "npm --prefix client install && npm --prefix server install && npm --prefix client run build && npm --prefix server run prisma:generate",
+    "start": "npm --prefix server start",
+    "railway:build": "npm run build",
+    "railway:seed": "npm --prefix server run db:push && npm --prefix server run seed",
     "typecheck": "npm --prefix client run build"
   }
 }

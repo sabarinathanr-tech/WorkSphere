@@ -53,16 +53,15 @@ Authentication is JWT-based with short-lived access tokens and rotating refresh 
 
 ## Deploy Online
 
-Use Neon PostgreSQL, Render for the API, and Vercel for the frontend.
+Use Railway for the web app and PostgreSQL in one platform.
 
 Deployment config files are included:
 
-- `render.yaml`
-- `client/vercel.json`
+- `railway.json`
 - `server/.env.production.example`
 - `client/.env.production.example`
 
-Full deployment steps are in `docs/deployment.md`.
+Full Railway deployment steps are in `docs/deployment.md`.
 
 ## Current implementation
 
