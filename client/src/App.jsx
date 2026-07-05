@@ -911,7 +911,7 @@ function EmployeeSettings({ showToast }) {
   return (
     <div className="settings-grid">
       <Panel title="Profile settings"><label>Display name<input defaultValue="Kabir Mehta" /></label><label>Personal email<input defaultValue="kabir.personal@example.com" /></label><button className="primary-btn" onClick={() => showToast("Profile settings saved")}>Save profile</button></Panel>
-      <Panel title="Password"><label>Current password<input type="password" defaultValue="password" /></label><label>New password<input type="password" placeholder="Minimum 8 characters" /></label><button className="secondary-btn" onClick={() => showToast("Password updated")}>Update password</button></Panel>
+      <Panel title="Password"><label>Current password<input type="password" placeholder="Current password" /></label><label>New password<input type="password" placeholder="Minimum 10 characters" /></label><button className="secondary-btn" onClick={() => showToast("Password updated")}>Update password</button></Panel>
     </div>
   );
 }

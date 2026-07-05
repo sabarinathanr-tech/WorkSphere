@@ -63,12 +63,22 @@ app.use("/api/payroll", payrollRoutes);
 app.use("/api/profile", profileRoutes);
 
 if (process.env.NODE_ENV === "production" && clientDistPath) {
-  app.use("/assets", express.static(path.join(clientDistPath, "assets"), {
-    fallthrough: false,
+  const staticOptions = {
     immutable: true,
     maxAge: "1y"
-  }));
+  };
+
+  app.use("/assets", express.static(path.join(clientDistPath, "assets"), staticOptions));
   app.use(express.static(clientDistPath, { index: false }));
+
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api/")) return next();
+    if (path.extname(req.path)) {
+      return res.status(404).json({ message: "Static asset not found" });
+    }
+    return next();
+  });
+
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/api/") || req.path.startsWith("/assets/")) return next();
     return res.sendFile(path.join(clientDistPath, "index.html"));

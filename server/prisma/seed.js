@@ -22,11 +22,14 @@ const users = [
 async function main() {
   const passwordHash = await bcrypt.hash("WorkSphere@123!", 12);
   const departmentRecords = {};
+  const resetDemoData = process.env.RESET_DEMO_DATA === "true";
 
-  await prisma.authSession.deleteMany();
-  await prisma.passwordResetToken.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.activityLog.deleteMany({ where: { action: "DATABASE_SEEDED" } });
+  if (resetDemoData) {
+    await prisma.authSession.deleteMany();
+    await prisma.passwordResetToken.deleteMany();
+    await prisma.notification.deleteMany();
+    await prisma.activityLog.deleteMany({ where: { action: "DATABASE_SEEDED" } });
+  }
 
   for (const department of departments) {
     departmentRecords[department.name] = await prisma.department.upsert({
@@ -74,13 +77,22 @@ async function main() {
       }
     });
 
-    await prisma.notification.create({
-      data: {
+    const existingWelcome = await prisma.notification.findFirst({
+      where: {
         userId: user.id,
-        title: "Welcome to WorkSphere",
-        message: `${item.firstName}, your ${item.role.toLowerCase()} workspace is ready.`
+        title: "Welcome to WorkSphere"
       }
     });
+
+    if (!existingWelcome) {
+      await prisma.notification.create({
+        data: {
+          userId: user.id,
+          title: "Welcome to WorkSphere",
+          message: `${item.firstName}, your ${item.role.toLowerCase()} workspace is ready.`
+        }
+      });
+    }
 
     if (item.employeeId === "EMP-003") {
       await prisma.leaveRequest.upsert({
@@ -115,13 +127,15 @@ async function main() {
     }
   }
 
-  await prisma.activityLog.create({
-    data: {
-      action: "DATABASE_SEEDED",
-      entity: "System",
-      metadata: { source: "prisma/seed.js" }
-    }
-  });
+  if (resetDemoData || !(await prisma.activityLog.findFirst({ where: { action: "DATABASE_SEEDED" } }))) {
+    await prisma.activityLog.create({
+      data: {
+        action: "DATABASE_SEEDED",
+        entity: "System",
+        metadata: { source: "prisma/seed.js" }
+      }
+    });
+  }
 }
 
 main()

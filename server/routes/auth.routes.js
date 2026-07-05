@@ -23,6 +23,14 @@ import { validate } from "../middleware/validate.middleware.js";
 
 const router = Router();
 
+router.get("/login", (_req, res) => {
+  res.json({
+    endpoint: "/api/auth/login",
+    method: "POST",
+    requiredBody: ["email", "password"],
+    optionalBody: ["role"]
+  });
+});
 router.post("/register", validate(registerSchema), asyncHandler(register));
 router.post("/login", validate(loginSchema), asyncHandler(login));
 router.post("/refresh", validate(refreshSchema), asyncHandler(refresh));
