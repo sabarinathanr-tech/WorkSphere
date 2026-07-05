@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import "./config/env.js";
@@ -16,6 +17,12 @@ import { errorHandler } from "./middleware/error.middleware.js";
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const clientDistPath = [
+  process.env.CLIENT_DIST_PATH,
+  path.resolve(process.cwd(), "client/dist"),
+  path.resolve(__dirname, "../client/dist"),
+  path.resolve(__dirname, "../../client/dist")
+].filter(Boolean).find((candidate) => fs.existsSync(path.join(candidate, "index.html")));
 const allowedOrigins = new Set([
   process.env.CLIENT_URL,
   ...(process.env.CLIENT_URLS || "").split(",").map((origin) => origin.trim()).filter(Boolean),
@@ -55,11 +62,24 @@ app.use("/api/leave", leaveRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/profile", profileRoutes);
 
-if (process.env.NODE_ENV === "production") {
-  const clientDistPath = path.resolve(__dirname, "../client/dist");
-  app.use(express.static(clientDistPath));
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(clientDistPath, "index.html"));
+if (process.env.NODE_ENV === "production" && clientDistPath) {
+  app.use("/assets", express.static(path.join(clientDistPath, "assets"), {
+    fallthrough: false,
+    immutable: true,
+    maxAge: "1y"
+  }));
+  app.use(express.static(clientDistPath, { index: false }));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/assets/")) return next();
+    return res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
+
+if (process.env.NODE_ENV === "production" && !clientDistPath) {
+  app.get("/", (_req, res) => {
+    res.status(503).json({
+      message: "Frontend build not found. Run npm run railway:build before starting the production server."
+    });
   });
 }
 

@@ -83,6 +83,14 @@ This runs Prisma schema sync and inserts demo data.
 
 ## 6. Verify Demo
 
+Make sure the latest commit is pushed to GitHub before redeploying Railway:
+
+```bash
+git push origin main
+```
+
+Then redeploy the Railway service.
+
 Open:
 
 ```text
@@ -134,3 +142,4 @@ employee@worksphere.io / WorkSphere@123!
 - `server/.env` is for local development and is ignored by Git.
 - If you change the Railway public URL, update `CLIENT_URL` and `CLIENT_URLS`.
 - Avoid AWS RDS for this demo if you want to keep database cost at zero.
+- If `/health` works but the page is blank, redeploy after pushing the latest commit. Static assets are served from `client/dist/assets`.
