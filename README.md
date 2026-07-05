@@ -32,7 +32,7 @@ npm --prefix server run seed
 The backend health endpoint confirms both API and database status:
 
 ```text
-http://127.0.0.1:5000/health
+http://127.0.0.1:5000/ready
 ```
 
 Seeded demo accounts use password `WorkSphere@123!`:
@@ -53,7 +53,7 @@ Authentication is JWT-based with short-lived access tokens and rotating refresh 
 
 ## Deploy Online
 
-Use Railway for the web app and PostgreSQL in one platform.
+Use Railway for the web app and a free managed PostgreSQL database such as Neon Free or Supabase Free. Avoid AWS RDS for this demo if you want zero database cost.
 
 Deployment config files are included:
 

@@ -32,13 +32,17 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/health", async (_req, res, next) => {
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", service: "WorkSphere API" });
+});
+
+app.get("/ready", async (_req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: "ok", service: "WorkSphere API", database: "connected" });
+    res.json({ status: "ready", service: "WorkSphere API", database: "connected" });
   } catch (error) {
     error.status = 503;
-    error.message = "WorkSphere API is running, but PostgreSQL is not connected";
+    error.message = "PostgreSQL is not connected";
     next(error);
   }
 });
