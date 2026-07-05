@@ -23,16 +23,22 @@ const clientDistPath = [
   path.resolve(__dirname, "../client/dist"),
   path.resolve(__dirname, "../../client/dist")
 ].filter(Boolean).find((candidate) => fs.existsSync(path.join(candidate, "index.html")));
+const railwayOrigin = process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null;
 const allowedOrigins = new Set([
   process.env.CLIENT_URL,
+  railwayOrigin,
+  "https://worksphere-production-88d0.up.railway.app",
   ...(process.env.CLIENT_URLS || "").split(",").map((origin) => origin.trim()).filter(Boolean),
   "http://localhost:5173",
-  "http://127.0.0.1:5173"
+  "http://127.0.0.1:5173",
+  "http://localhost:5050",
+  "http://127.0.0.1:5050"
 ].filter(Boolean));
 
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    if (/^https:\/\/[a-z0-9-]+\.up\.railway\.app$/i.test(origin)) return callback(null, true);
     return callback(new Error("Origin is not allowed by CORS"));
   },
   credentials: true
