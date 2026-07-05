@@ -51,6 +51,19 @@ Authentication is JWT-based with short-lived access tokens and rotating refresh 
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
 
+## Deploy Online
+
+Use Neon PostgreSQL, Render for the API, and Vercel for the frontend.
+
+Deployment config files are included:
+
+- `render.yaml`
+- `client/vercel.json`
+- `server/.env.production.example`
+- `client/.env.production.example`
+
+Full deployment steps are in `docs/deployment.md`.
+
 ## Current implementation
 
 - Premium responsive React/Vite dashboard experience.
@@ -58,4 +71,3 @@ Authentication is JWT-based with short-lived access tokens and rotating refresh 
 - Interactive modules for employees, attendance, leave, payroll, profile, reports, notifications and settings.
 - Express API with PostgreSQL-backed auth, employees, attendance, leave, payroll, profile and dashboard data.
 - Production-level Prisma schema for users, employees, departments, attendance, leave, payroll, notifications, activity logs and documents.
-A modern Human Resource Management System for employee management, attendance, leave management, and workforce analytics.

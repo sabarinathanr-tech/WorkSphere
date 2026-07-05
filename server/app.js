@@ -14,6 +14,7 @@ import { errorHandler } from "./middleware/error.middleware.js";
 const app = express();
 const allowedOrigins = new Set([
   process.env.CLIENT_URL,
+  ...(process.env.CLIENT_URLS || "").split(",").map((origin) => origin.trim()).filter(Boolean),
   "http://localhost:5173",
   "http://127.0.0.1:5173"
 ].filter(Boolean));
